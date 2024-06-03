@@ -9,37 +9,69 @@ function App() {
   const [duration, setDuration] = useState('');
   const [amount, setAmount] = useState('');
 
-  useEffect(() => {
-    const loadAccount = async () => {
-      const accounts = await web3.eth.getAccounts();
-      setAccount(accounts[0]);
+    useEffect(() => {
+        const loadAccount = async () => {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                setAccount(accounts[0]);
+                console.log("Loaded account:", accounts[0]);
+            } catch (error) {
+                console.error("Error loading account:", error);
+            }
+        };
+
+        const loadCampaigns = async () => {
+            try {
+                const campaignCount = await crowdfunding.methods.campaignCount().call();
+                console.log("Campaign count:", campaignCount);
+                const loadedCampaigns = [];
+                for (let i = 1; i <= campaignCount; i++) {
+                    const campaign = await crowdfunding.methods.campaigns(i).call();
+                    console.log(`Campaign ${i}:`, campaign);
+                    loadedCampaigns.push(campaign);
+                }
+                setCampaigns(loadedCampaigns);
+            } catch (error) {
+                console.error("Error loading campaigns:", error);
+            }
+        };
+
+        loadAccount();
+        loadCampaigns();
+    }, []);
+
+
+    const createCampaign = async () => {
+        try {
+            await crowdfunding.methods.createCampaign(goal, duration).send({
+                from: account,
+                gas: 3000000, // Лимит газа
+                gasPrice: web3.utils.toWei('20', 'gwei') // Укажите цену газа
+            });
+            window.location.reload();
+        } catch (error) {
+            console.error("Error creating campaign:", error);
+        }
     };
 
-    const loadCampaigns = async () => {
-      const campaignCount = await crowdfunding.methods.campaignCount().call();
-      const loadedCampaigns = [];
-      for (let i = 1; i <= campaignCount; i++) {
-        const campaign = await crowdfunding.methods.campaigns(i).call();
-        loadedCampaigns.push(campaign);
-      }
-      setCampaigns(loadedCampaigns);
+
+    const pledge = async (id) => {
+        try {
+            await crowdfunding.methods.pledge(id).send({
+                from: account,
+                value: web3.utils.toWei(amount, 'ether'),
+                gas: 3000000, // Лимит газа
+                gasPrice: web3.utils.toWei('20', 'gwei') // Укажите цену газа
+            });
+            window.location.reload();
+        } catch (error) {
+            console.error("Error pledging to campaign:", error);
+        }
     };
 
-    loadAccount();
-    loadCampaigns();
-  }, []);
 
-  const createCampaign = async () => {
-    await crowdfunding.methods.createCampaign(goal, duration).send({ from: account });
-    window.location.reload();
-  };
 
-  const pledge = async (id) => {
-    await crowdfunding.methods.pledge(id).send({ from: account, value: web3.utils.toWei(amount, 'ether') });
-    window.location.reload();
-  };
-
-  return (
+    return (
       <div>
         <h1>Crowdfunding DApp</h1>
         <p>Account: {account}</p>
